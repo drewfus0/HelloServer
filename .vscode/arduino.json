@@ -1,0 +1,8 @@
+{
+    "board": "esp8266:esp8266:d1_mini_lite",
+    "configuration": "CpuFrequency=160,VTable=flash,FlashSize=1M128,LwIPVariant=v2mss536,Debug=Disabled,DebugLevel=None____,FlashErase=none,UploadSpeed=115200",
+    "port": "COM3",
+    "sketch": "HelloServer.ino",
+    "output": "output",
+    "prebuild": "c:\\users\\drewf\\documents\\arduino\\Helloserver\\.vscode\\build.bat"
+}
