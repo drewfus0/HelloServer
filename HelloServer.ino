@@ -9,28 +9,28 @@
 #define PIN D3
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(295, PIN, NEO_RGBW + NEO_KHZ800);
 #include "LedFunctions.h"
-
+#define LED D4
 
 const char* ssid = "FTelstra9EB5CF";
 const char* password = "8D22AA74CF";
 
 ESP8266WebServer server(80);
 
-const int led = 13;
+const int led = LED;
 
 String getContentType(String filename); // convert the file extension to the MIME type
 bool handleFileRead(String path);       // send the right file to the client (if it exists)
 
 void handleRoot() {
-  digitalWrite(led, 1);
-  if(!handleFileRead("index.html")){
+  digitalWrite(led, 0);
+  if(!handleFileRead("/index.html")){
     server.send(200, "text/plain", "hello from esp8266!");
   }
-  digitalWrite(led, 0);
+  digitalWrite(led, 1);
 }
 
 void handleNotFound() {
-  digitalWrite(led, 1);
+  digitalWrite(led, 0);
   if (!handleFileRead(server.uri())) {
     String message = "File Not Found\n\n";
     message += "URI: ";
@@ -45,12 +45,12 @@ void handleNotFound() {
     }
     server.send(404, "text/plain", message);
   }
-  digitalWrite(led, 0);
+  digitalWrite(led, 1);
 }
 
 void setup(void) {
   pinMode(led, OUTPUT);
-  digitalWrite(led, 0);
+  digitalWrite(led, 1);
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -73,14 +73,14 @@ void setup(void) {
 
   server.on("/", handleRoot);
 
-  server.on("/inline", []() {
-    server.send(200, "text/plain", "this works as well");
+  server.on("/rainbow", []() {
+    handleRoot();
     rainbow(20);
   });
 
-  server.on("/", []() {
-    server.send(200, "text/plain", "this Also works!");
-    Wheel(57);
+  server.on("/wipe", []() {
+    handleRoot();
+    colorWipe(120,10);
     });
   
   // Start the SPI Flash Files System 
@@ -126,6 +126,12 @@ bool handleFileRead(String path){  // send the right file to the client (if it e
     return true;
   }
   Serial.println(String("\tFile Not Found: ") + path);
+  Dir dir = SPIFFS.openDir("/");
+  while (dir.next()) {
+      Serial.println(dir.fileName());
+      File f = dir.openFile("r");
+      Serial.println(f.size()+"  ");
+  }
   return false;                                          // If the file doesn't exist, return false
 }
 
