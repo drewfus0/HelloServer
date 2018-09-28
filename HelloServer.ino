@@ -7,7 +7,7 @@
 //LED STRIP STUFF
 #include <Adafruit_NeoPixel.h>
 #define PIN D3
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(295, PIN, NEO_RGBW + NEO_KHZ800);
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(300, PIN, NEO_GRB + NEO_KHZ800);
 #include "LedFunctions.h"
 #define LED D4
 
@@ -17,6 +17,8 @@ const char* password = "8D22AA74CF";
 ESP8266WebServer server(80);
 
 const int led = LED;
+uint16_t red, green, blue, wait;
+bool isRainbow=false, isWipe=false;
 
 String getContentType(String filename); // convert the file extension to the MIME type
 bool handleFileRead(String path);       // send the right file to the client (if it exists)
@@ -75,14 +77,27 @@ void setup(void) {
 
   server.on("/rainbow", []() {
     handleRoot();
-    rainbow(20);
+    UpdateArgs();
+    rainbow(wait);
+    isRainbow=true;
+    isWipe=false;
   });
 
   server.on("/wipe", []() {
     handleRoot();
-    colorWipe(120,10);
+    UpdateArgs();
+    colorWipe(strip.Color(red,green,blue),wait);
+    isRainbow=false;
+    isWipe=true;
     });
   
+  server.on("/off", [](){
+    handleRoot();
+    UpdateArgs();
+    isRainbow=false;
+    isWipe=false;
+    colorWipe(strip.Color(0,0,0),0);
+  });
   // Start the SPI Flash Files System 
   SPIFFS.begin();
   
@@ -97,6 +112,10 @@ void setup(void) {
 
 void loop(void) {
   server.handleClient();
+  if (isRainbow) rainbow(wait);
+  
+  if (isWipe) colorWipe(strip.Color(red,green,blue),wait);
+  if (isWipe) colorWipe(strip.Color(0,0,0),wait);
 }
 
 //########################################################################
@@ -126,12 +145,6 @@ bool handleFileRead(String path){  // send the right file to the client (if it e
     return true;
   }
   Serial.println(String("\tFile Not Found: ") + path);
-  Dir dir = SPIFFS.openDir("/");
-  while (dir.next()) {
-      Serial.println(dir.fileName());
-      File f = dir.openFile("r");
-      Serial.println(f.size()+"  ");
-  }
   return false;                                          // If the file doesn't exist, return false
 }
 
@@ -139,10 +152,23 @@ bool handleFileRead(String path){  // send the right file to the client (if it e
 //  LedFunctions
 //########################################################################
 // Fill the dots one after the other with a color
+
+void UpdateArgs(){
+      if (server.arg("red")=="") red = 255;
+    else red = server.arg("red").toInt();
+    if (server.arg("green")=="") green = 255;
+    else green = server.arg("green").toInt();
+    if (server.arg("blue")=="") blue = 0;
+    else blue = server.arg("blue").toInt();
+    if (server.arg("wait")=="") wait = 10;
+    else wait = server.arg("wait").toInt();
+}
+
 void colorWipe(uint32_t c, uint8_t wait) {
   for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
+    server.handleClient();
     delay(wait);
   }
 }
@@ -153,6 +179,7 @@ void rainbow(uint8_t wait) {
   for(j=0; j<256; j++) {
     for(i=0; i<strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel((i+j) & 255));
+      if(server.handleClient()) return;
     }
     strip.show();
     delay(wait);
