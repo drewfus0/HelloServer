@@ -1,4 +1,3 @@
-
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
@@ -8,16 +7,20 @@
 #include <Adafruit_NeoPixel.h>
 #define PIN D3
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(300, PIN, NEO_GRB + NEO_KHZ800);
-#include "LedFunctions.h"
+#include "LedStrip.h"
 #define LED D4
 
-const char* ssid = "FTelstra9EB5CF";
-const char* password = "8D22AA74CF";
+//const char* ssid = "FTelstra9EB5CF";
+//const char* password = "8D22AA74CF";
+const char* ssid = "OPTUS_2776DC";
+const char* password = "kythewhiff73073";
 
 ESP8266WebServer server(80);
 
 const int led = LED;
 uint16_t red, green, blue, wait;
+uint32_t c,b;
+uint16_t j=0, i=0;
 bool isRainbow=false, isWipe=false;
 
 String getContentType(String filename); // convert the file extension to the MIME type
@@ -78,7 +81,7 @@ void setup(void) {
   server.on("/rainbow", []() {
     handleRoot();
     UpdateArgs();
-    rainbow(wait);
+    rainbowCycle(wait);
     isRainbow=true;
     isWipe=false;
   });
@@ -86,7 +89,9 @@ void setup(void) {
   server.on("/wipe", []() {
     handleRoot();
     UpdateArgs();
-    colorWipe(strip.Color(red,green,blue),wait);
+    i=0;
+    c=strip.Color(255,0,0);
+    b=strip.Color(0,0,0);
     isRainbow=false;
     isWipe=true;
     });
@@ -96,7 +101,8 @@ void setup(void) {
     UpdateArgs();
     isRainbow=false;
     isWipe=false;
-    colorWipe(strip.Color(0,0,0),0);
+    red=0;green=0;blue=0;
+    setColor(wait);
   });
   // Start the SPI Flash Files System 
   SPIFFS.begin();
@@ -112,10 +118,8 @@ void setup(void) {
 
 void loop(void) {
   server.handleClient();
-  if (isRainbow) rainbow(wait);
-  
-  if (isWipe) colorWipe(strip.Color(red,green,blue),wait);
-  if (isWipe) colorWipe(strip.Color(0,0,0),wait);
+  if (isRainbow) rainbowCycle(wait);
+  if (isWipe) colorWipe(wait);
 }
 
 //########################################################################
@@ -156,21 +160,37 @@ bool handleFileRead(String path){  // send the right file to the client (if it e
 void UpdateArgs(){
       if (server.arg("red")=="") red = 255;
     else red = server.arg("red").toInt();
-    if (server.arg("green")=="") green = 255;
+    if (server.arg("green")=="") green = 0;
     else green = server.arg("green").toInt();
     if (server.arg("blue")=="") blue = 0;
     else blue = server.arg("blue").toInt();
-    if (server.arg("wait")=="") wait = 10;
+    if (server.arg("wait")=="") wait = 2;
     else wait = server.arg("wait").toInt();
 }
 
-void colorWipe(uint32_t c, uint8_t wait) {
-  for(uint16_t i=0; i<strip.numPixels(); i++) {
+void setColor(uint8_t wait){
+  for( j=0; j<strip.numPixels(); j++)
+  {
+    strip.setPixelColor(j,strip.Color(red,green,blue));
+  }
+  strip.show();
+  delay(wait);
+}
+
+void colorWipe(uint8_t wait) {
+  //for(uint16_t i=0; i<strip.numPixels(); i++) {
     strip.setPixelColor(i, c);
     strip.show();
-    server.handleClient();
+    if(i>=strip.numPixels()){
+      i=0;
+      uint32_t a = c;
+      c=b;
+      b=a;
+    }else{
+      i++;
+    }
     delay(wait);
-  }
+  //}
 }
 
 void rainbow(uint8_t wait) {
@@ -179,24 +199,31 @@ void rainbow(uint8_t wait) {
   for(j=0; j<256; j++) {
     for(i=0; i<strip.numPixels(); i++) {
       strip.setPixelColor(i, Wheel((i+j) & 255));
-      if(server.handleClient()) return;
     }
     strip.show();
     delay(wait);
   }
 }
 
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
 
-  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-    for(i=0; i< strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-    }
-    strip.show();
-    delay(wait);
+
+// Slightly different, this makes the rainbow equally distributed throughout
+
+void rainbowCycle(uint8_t wait) {
+  //uint16_t i, j;
+  
+  if (i>=strip.numPixels()) {
+    i=0;
+    j++;
   }
+  if (j>=256*5){
+    j=0;
+  }
+  for(i=0; i< strip.numPixels(); i++) {
+    strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+  }
+  strip.show();
+  delay(wait);
 }
 
 //Theatre-style crawling lights.
